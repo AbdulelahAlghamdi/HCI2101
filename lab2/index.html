@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لعبة XO العربية</title>
+
+<style>
+:root{
+  --bg:#0f172a;
+  --card:#111827;
+  --primary:#38bdf8;
+  --secondary:#22c55e;
+  --danger:#ef4444;
+  --text:#f9fafb;
+}
+
+*{
+  box-sizing:border-box;
+  font-family:'Segoe UI', Tahoma, sans-serif;
+}
+
+body{
+  margin:0;
+  background:linear-gradient(135deg,#020617,#0f172a);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding-bottom:90px;
+}
+
+.card{
+  background:rgba(255,255,255,0.05);
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;
+  padding:24px;
+  width:100%;
+  max-width:420px;
+  box-shadow:0 20px 50px rgba(0,0,0,.5);
+}
+
+h1{
+  text-align:center;
+  color:var(--primary);
+  margin-bottom:20px;
+}
+
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:12px;
+  border:none;
+  font-size:16px;
+}
+
+input,select{
+  background:#020617;
+  color:white;
+  border:1px solid rgba(255,255,255,.15);
+}
+
+button{
+  background:linear-gradient(135deg,var(--primary),#0ea5e9);
+  color:#020617;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:hover{
+  opacity:.9;
+}
+
+.hidden{
+  display:none;
+}
+
+.board{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:20px;
+}
+
+.cell{
+  aspect-ratio:1;
+  background:#020617;
+  border-radius:16px;
+  font-size:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.cell:hover{
+  background:#030a1f;
+}
+
+.status{
+  text-align:center;
+  margin-top:15px;
+  font-size:18px;
+  color:var(--secondary);
+}
+
+.footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  background:#020617;
+  border-top:1px solid rgba(255,255,255,.15);
+  padding:10px;
+  text-align:center;
+  font-size:13px;
+  line-height:1.6;
+}
+</style>
+</head>
+
+<body>
+
+<!-- شاشة البداية -->
+<div class="card" id="startScreen">
+  <h1>🎮 لعبة XO</h1>
+
+  <select id="mode">
+    <option value="1">لاعب واحد (ضد الكمبيوتر)</option>
+    <option value="2">لاعبين</option>
+  </select>
+
+  <input type="text" id="player1" placeholder="اسم اللاعب الأول">
+  <input type="text" id="player2" placeholder="اسم اللاعب الثاني" class="hidden">
+
+  <button onclick="startGame()">ابدأ اللعب</button>
+</div>
+
+<!-- شاشة اللعبة -->
+<div class="card hidden" id="gameScreen">
+  <h1>XO</h1>
+  <div class="board" id="board"></div>
+  <div class="status" id="status"></div>
+  <button onclick="resetGame()">إعادة اللعب</button>
+</div>
+
+<!-- الفوتر الإجباري -->
+<div class="footer">
+  اسم الطالب: <b>ABDULELAH ALI SAEED ALGHAMDI</b> (عبدالاله علي سعيد الغامدي)<br>
+  الرقم الجامعي: <b>446006161</b><br>
+  بإشراف: <b>Mohammed Ahmed Jabali</b>
+</div>
+
+<script>
+let board = ["","","","","","","","",""];
+let currentPlayer = "X";
+let gameOver = false;
+let mode = 1;
+let names = {};
+
+const winCombos = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+document.getElementById("mode").addEventListener("change", e=>{
+  document.getElementById("player2").classList.toggle("hidden", e.target.value==="1");
+});
+
+function startGame(){
+  mode = document.getElementById("mode").value;
+  names.X = document.getElementById("player1").value || "اللاعب الأول";
+  names.O = mode=="2" ? (document.getElementById("player2").value || "اللاعب الثاني") : "الكمبيوتر";
+
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("gameScreen").classList.remove("hidden");
+
+  renderBoard();
+  updateStatus();
+}
+
+function renderBoard(){
+  const b = document.getElementById("board");
+  b.innerHTML="";
+  board.forEach((cell,i)=>{
+    const d = document.createElement("div");
+    d.className="cell";
+    d.textContent=cell;
+    d.onclick=()=>play(i);
+    b.appendChild(d);
+  });
+}
+
+function play(i){
+  if(board[i] || gameOver) return;
+
+  board[i]=currentPlayer;
+  renderBoard();
+
+  if(checkWin()){
+    document.getElementById("status").textContent = `🎉 الفائز: ${names[currentPlayer]}`;
+    gameOver=true;
+    return;
+  }
+
+  if(board.every(c=>c)){
+    document.getElementById("status").textContent="🤝 تعادل";
+    gameOver=true;
+    return;
+  }
+
+  currentPlayer = currentPlayer==="X"?"O":"X";
+  updateStatus();
+
+  if(mode=="1" && currentPlayer==="O"){
+    setTimeout(computerMove,500);
+  }
+}
+
+function computerMove(){
+  let empty = board.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+  let move = empty[Math.floor(Math.random()*empty.length)];
+  play(move);
+}
+
+function checkWin(){
+  return winCombos.some(c=>c.every(i=>board[i]===currentPlayer));
+}
+
+function updateStatus(){
+  document.getElementById("status").textContent = `الدور على: ${names[currentPlayer]}`;
+}
+
+function resetGame(){
+  board = ["","","","","","","","",""];
+  currentPlayer="X";
+  gameOver=false;
+  renderBoard();
+  updateStatus();
+}
+</script>
+
+</body>
+</html>
